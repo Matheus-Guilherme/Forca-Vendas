@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { Picker } from '@react-native-picker/picker'; // Para os selects
+import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 
 interface Product {
@@ -21,63 +21,96 @@ interface Product {
 }
 
 interface ProductsScreenProps {
-  route: any; // Para receber o código do cliente
+  route: any;
   navigation: any;
 }
 
 const ProductsScreen: React.FC<ProductsScreenProps> = ({ route, navigation }) => {
-  const { clienteCodigo } = route.params; // Recebe o código do cliente da tela Home
+  const { clienteCodigo } = route.params;
 
   const [produtos, setProdutos] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [formaPagamento, setFormaPagamento] = useState<string>('');
   const [condicaoPagamento, setCondicaoPagamento] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
 
-  // Dados fictícios para formas e condições de pagamento
   const formasPagamento = ['À Vista', 'Cartão de Crédito', 'Boleto', 'PIX'];
   const condicoesPagamento = ['7 Dias', '14 Dias', '21 Dias', '30 Dias'];
 
-  // Função para buscar produtos
-  const fetchProdutos = async () => {
+  const fetchProdutos = useCallback(async (pageNumber: number, query: string = '') => {
+    if (isFetching || !hasMore) return;
+    setIsFetching(true);
     setLoading(true);
+    setError(null);
+
     try {
       const response = await axios.get('http://192.168.2.133:3000/products', {
         params: {
           clienteCodigo,
-          search: searchQuery,
+          search: query,
+          page: pageNumber,
         },
       });
 
-      if (response.status === 200) {
-        setProdutos(response.data);
+      console.log('Resposta da API:', response.data.products.itens); // Debug: Verifique o JSON retornado
+
+      if (response.status === 200 && response.data.products.itens) {
+        const newProducts = response.data.products.itens;
+
+        if (pageNumber === 1) {
+          setProdutos(newProducts);
+        } else {
+          setProdutos((prev) => [...prev, ...newProducts]);
+        }
+
+        setHasMore(newProducts.length === 50);
       } else {
         throw new Error('Erro ao buscar produtos');
       }
     } catch (error) {
       console.error('Erro na requisição:', error);
+      setError('Erro ao carregar produtos. Tente novamente.');
     } finally {
       setLoading(false);
+      setIsFetching(false);
+    }
+  }, [clienteCodigo, isFetching, hasMore]);
+
+  useEffect(() => {
+    const debounceTimeout = setTimeout(() => {
+      fetchProdutos(1, searchQuery);
+    }, 500);
+
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery]);
+
+  const handleLoadMore = () => {
+    if (!loading && hasMore && !isFetching) {
+      setPage((prev) => prev + 1);
     }
   };
 
-  useEffect(() => {
-    fetchProdutos();
-  }, [searchQuery]);
-
   // Renderiza cada item da lista de produtos
-  const renderItem = ({ item }: { item: Product }) => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{item.CODIGO} - {item.DESCRICAO}</Text>
-      <Text style={styles.cardText}>{item.UNIDADE} - {item.FAMILIA}</Text>
-      <Text style={styles.cardText}>Estoque: {item.ESTOQUE}</Text>
-      <Text style={styles.cardText}>Valor: R$ {item.PRECO}</Text>
-    </View>
-  );
+  const renderItem = ({ item }: { item: Product }) => {
+    console.log('Renderizando item:', item);
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{item.CODIGO} - {item.DESCRICAO}</Text>
+        <Text style={styles.cardText}>{item.UNIDADE} - {item.FAMILIA}</Text>
+        <Text style={styles.cardText}>Estoque: {item.ESTOQUE}</Text>
+        <Text style={styles.cardText}>Valor: R$ {item.PRECO}</Text>
+      </View>
+    );
+  };
+
+  console.log('Produtos no estado:', produtos); // Debug: Verifique se o estado está sendo atualizado
 
   return (
     <View style={styles.container}>
-      {/* Cabeçalho com selects */}
       <View style={styles.header}>
         <View style={styles.selectContainer}>
           <Text style={styles.label}>Forma de Pagamento</Text>
@@ -106,7 +139,6 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ route, navigation }) =>
         </View>
       </View>
 
-      {/* Campo de pesquisa */}
       <View style={styles.searchContainer}>
         <Icon name="search" size={20} color="#666" style={styles.searchIcon} />
         <TextInput
@@ -117,12 +149,17 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ route, navigation }) =>
         />
       </View>
 
-      {/* Lista de produtos */}
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
       <FlatList
         data={produtos}
         renderItem={renderItem}
-        keyExtractor={(item) => item.CODIGO}
-        ListFooterComponent={loading ? <ActivityIndicator size="large" color="#6200ee" /> : null}
+        keyExtractor={(item) => item.CODIGO.toString()}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loading ? <ActivityIndicator size="large" color="#6200ee" /> : null
+        }
       />
     </View>
   );
@@ -186,6 +223,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 5,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 10,
   },
 });
 

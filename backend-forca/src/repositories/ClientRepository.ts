@@ -11,7 +11,7 @@ interface Cliente {
 }
 
 export default {
-  async getByVend(
+  async getByClient(
     id: string,
     page: number = 1,
     limit: number = 50,

@@ -9,6 +9,6 @@ router.post('/login', UserController.login);
 
 router.get('/clients', ClientController.clients);
 
-//router.get('/products', ProductController.products);
+router.get('/products', ProductController.products);
 
 export default router;

@@ -9,7 +9,6 @@ import {
   FlatList,
   TextInput,
   ActivityIndicator,
-  Alert,
   LayoutAnimation,
   Platform,
   UIManager,
@@ -79,6 +78,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [inputValue, setInputValue] = useState<string>(''); // Estado para o valor digitado no campo
   const [page, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isFetching, setIsFetching] = useState<boolean>(false);
@@ -91,30 +91,30 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     setLoading(true);
 
     try {
+      console.log('Fazendo requisição com:', { page: pageNumber, search: query }); // Debug: Verifica os parâmetros da requisição
       const response = await axios.get('http://192.168.2.133:3000/clients', {
         params: {
-          id: 239,
+          id: 19,
           page: pageNumber,
           search: query,
         },
       });
 
+      console.log('Resposta da API:', response.data); // Debug: Verifica a resposta da API
+
       if (response.status === 200 && response.data.user) {
         const { clientes: newClientes, hasMore: more } = response.data.user;
 
         if (pageNumber === 1) {
-          setClientes(newClientes);
+          setClientes(newClientes); // Atualiza a lista de clientes
         } else {
-          setClientes(prev => [...prev, ...newClientes]);
+          setClientes(prev => [...prev, ...newClientes]); // Adiciona novos clientes
         }
 
         setHasMore(more);
-      } else {
-        throw new Error('Erro ao buscar clientes');
       }
     } catch (error) {
       console.error('Erro na requisição:', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao buscar os clientes.');
     } finally {
       setLoading(false);
       setIsFetching(false);
@@ -122,20 +122,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   }, [isFetching, hasMore]);
 
   useEffect(() => {
-    //console.log('useEffect acionado com searchQuery:', searchQuery); // Debug
+    console.log('useEffect acionado com searchQuery:', searchQuery); // Debug: Verifica se o useEffect está sendo acionado
     fetchClientes(page, searchQuery);
-  }, [page, searchQuery, fetchClientes]);
+  }, [page, searchQuery]); // Só executa quando `page` ou `searchQuery` mudam
 
   const handleLoadMore = () => {
     if (!loading && hasMore && !isFetching) {
-      setPage(prev => prev + 1);
+      setPage(prev => prev + 1); // Incrementa a página corretamente
     }
   };
 
-  const handleSearch = (query: string) => {
-    console.log('Texto da busca:', query); // Debug
-    setSearchQuery(query);
-    setPage(1);
+  const handleSearch = () => {
+    console.log('Texto da busca (ao pressionar a lupa):', inputValue); // Debug: Verifica o texto digitado
+    setSearchQuery(inputValue); // Atualiza o estado searchQuery com o valor digitado
+    setPage(1); // Reseta a página para 1 ao fazer uma nova pesquisa
+    setInputValue(''); // Limpa o campo de busca após a pesquisa
   };
 
   const handleLogout = () => {
@@ -163,13 +164,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
       </View>
 
       <View style={styles.searchContainer}>
-        <Icon name="search" size={20} color="#666" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Pesquisar cliente..."
-          value={searchQuery}
-          onChangeText={handleSearch}
+          value={inputValue}
+          onChangeText={setInputValue} // Atualiza o estado inputValue
         />
+        <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+          <Icon name="search" size={20} color="#666" />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -216,13 +219,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 20,
   },
-  searchIcon: {
-    marginRight: 10,
-  },
   searchInput: {
     flex: 1,
     fontSize: 16,
     paddingVertical: 15,
+  },
+  searchButton: {
+    marginLeft: 10,
   },
   card: {
     backgroundColor: '#fff',

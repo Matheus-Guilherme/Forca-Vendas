@@ -11,7 +11,10 @@ interface Product {
 }
 
 export default {
-  async getproduct(id: string, page: number = 1, limit: number = 50): Promise<{ products: Product[]; hasMore: boolean }> {
+  async getproduct(id: string, 
+                   page: number = 1, 
+                   limit: number = 50): Promise<{ itens: Product[]; hasMore: boolean }> {
+    
     let connection;
 
     try {
@@ -43,11 +46,11 @@ export default {
 
       // Verifica se há resultados
       if (!rows || rows.length === 0) {
-        return { products: [], hasMore: false }; // Retorna array vazio e indica que não há mais dados
+        return { itens: [], hasMore: false }; // Retorna array vazio e indica que não há mais dados
       }
 
       // Converte o array de valores para um array de objetos com propriedades nomeadas
-      const products: Product[] = rows.map(row => ({
+      const itens: Product[] = rows.map(row => ({
         CODIGO: row[0],
         DESCRICAO: row[1],
         UNIDADE: row[2],
@@ -56,12 +59,12 @@ export default {
         PRECO: row[5],
       }));
 
-      console.log('Produtos encontrados:', products);
+      console.log('Produtos encontrados:', itens);
 
       // Verifica se há mais dados para carregar
       const hasMore = rows.length === limit; // Se o número de registros for igual ao limite, há mais dados
 
-      return { products, hasMore };
+      return { itens, hasMore };
     } catch (error) {
       console.error('Erro ao buscar produto:', error);
       throw new Error('Erro ao buscar produto no banco de dados.');
