@@ -11,7 +11,12 @@ interface Cliente {
 }
 
 export default {
-  async getByVend(id: string, page: number = 1, limit: number = 50): Promise<{ clientes: Cliente[]; hasMore: boolean }> {
+  async getByVend(
+    id: string,
+    page: number = 1,
+    limit: number = 50,
+    search: string = ''
+  ): Promise<{ clientes: Cliente[]; hasMore: boolean }> {
     let connection;
 
     try {
@@ -25,25 +30,29 @@ export default {
       // Calcula o offset com base na página e no limite
       const offset = (page - 1) * limit;
 
-      // Executa a query com paginação
-      const result = await connection.execute(
-        `SELECT codcli as "CODIGO", 
-                nuvem.f_formata_cnpj(cnpj) as "CNPJ", 
-                razcli as "RAZAOSOC", 
-                telefone as "CONTATO", 
-                endend||', '||numend||' - '||baiend as "ENDERECO", 
-                cidade||'/'||estado as "CIDADE" 
-            FROM nuvem.v_clientes 
-          WHERE codven = :id
-            AND sitcli = 'A'
-          ORDER BY codcli, razcli
-          OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`,
-        {
-          id: id,
-          offset: offset, // Offset para paginação
-          limit: limit, // Limite de registros por página
-        }
-      );
+      // Query SQL com filtro de busca
+      const query = `
+        SELECT codcli as "CODIGO", 
+               nuvem.f_formata_cnpj(cnpj) as "CNPJ", 
+               razcli as "RAZAOSOC", 
+               telefone as "CONTATO", 
+               endend||', '||numend||' - '||baiend as "ENDERECO", 
+               cidade||'/'||estado as "CIDADE" 
+        FROM nuvem.v_clientes 
+        WHERE codven = :id
+          AND sitcli = 'A'
+          AND (UPPER(razcli) LIKE UPPER(:search) OR UPPER(codcli) LIKE UPPER(:search))
+        ORDER BY codcli, razcli
+        OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+      `;
+
+      // Executa a query com paginação e filtro de busca
+      const result = await connection.execute(query, {
+        id: id,
+        search: `%${search}%`, // Adiciona o parâmetro de busca
+        offset: offset, // Offset para paginação
+        limit: limit, // Limite de registros por página
+      });
 
       // Faz uma type assertion para garantir que result.rows é um array
       const rows = result.rows as [string, string, string, string, string, string][] | undefined;

@@ -122,6 +122,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   }, [isFetching, hasMore]);
 
   useEffect(() => {
+    //console.log('useEffect acionado com searchQuery:', searchQuery); // Debug
     fetchClientes(page, searchQuery);
   }, [page, searchQuery, fetchClientes]);
 
@@ -132,6 +133,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   };
 
   const handleSearch = (query: string) => {
+    console.log('Texto da busca:', query); // Debug
     setSearchQuery(query);
     setPage(1);
   };
