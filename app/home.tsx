@@ -26,6 +26,8 @@ interface Cliente {
   ENDERECO: string;
   CIDADE: string;
   CONTATO: string;
+  TABELA: string;
+  REAJUSTE: string;
 }
 
 type RootStackParamList = {
@@ -42,7 +44,7 @@ interface HomeScreenProps {
 // Componente separado para o card (com React.memo)
 const ClienteCard: React.FC<{
   item: Cliente;
-  onPriceTablePress: (codigo: string) => void;
+  onPriceTablePress: (codigo: string, razaosoc: string, tabela: string) => void;
 }> = memo(({ item, onPriceTablePress }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -64,7 +66,7 @@ const ClienteCard: React.FC<{
           <Text style={styles.cardText}>Contato: {item.CONTATO}</Text>
           <TouchableOpacity
             style={styles.priceTableButton}
-            onPress={() => onPriceTablePress(item.CODIGO)}
+            onPress={() => onPriceTablePress(item.CODIGO, item.RAZAOSOC, item.TABELA)}
           >
             <Text style={styles.priceTableButtonText}>Tabela de Preço</Text>
           </TouchableOpacity>
@@ -143,8 +145,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
     navigation.navigate('Login');
   };
 
-  const handlePriceTable = useCallback((codigo: string) => {
-    navigation.navigate('Products', { clienteCodigo: codigo });
+  const handlePriceTable = useCallback((codigo: string, razaosoc: string, tabela: string) => {
+    navigation.navigate('Products', { clienteCodigo: codigo, clienteNome: razaosoc, clienteTabela: tabela });
   }, []);
 
   const renderItem = useCallback(({ item }: { item: Cliente }) => (

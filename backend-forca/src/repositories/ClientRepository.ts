@@ -8,6 +8,8 @@ interface Cliente {
   CONTATO: string;
   ENDERECO: string;
   CIDADE: string;
+  TABELA: string;
+  REAJUSTE: string;
 }
 
 export default {
@@ -32,18 +34,23 @@ export default {
 
       // Query SQL com filtro de busca
       const query = `
-        SELECT codcli as "CODIGO", 
-               nuvem.f_formata_cnpj(cnpj) as "CNPJ", 
-               razcli as "RAZAOSOC", 
-               telefone as "CONTATO", 
-               endend||', '||numend||' - '||baiend as "ENDERECO", 
-               cidade||'/'||estado as "CIDADE" 
-        FROM nuvem.v_clientes 
-        WHERE codven = :id
-          AND sitcli = 'A'
-          AND (UPPER(razcli) LIKE UPPER(:search) OR UPPER(codcli) LIKE UPPER(:search))
-        ORDER BY codcli, razcli
-        OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        SELECT  c.codcli AS "CODIGO", 
+                nuvem.f_formata_cnpj(MAX(c.cnpj)) AS "CNPJ", 
+                MAX(c.razcli) AS "RAZAOSOC", 
+                MAX(c.telefone) AS "CONTATO", 
+                MAX(c.endend) || ', ' || MAX(c.numend) || ' - ' || MAX(c.baiend) AS "ENDERECO", 
+                MAX(c.cidade) || '/' || MAX(c.estado) AS "CIDADE",
+                MAX(r.destvs) AS "TABELA",
+                MAX(r.rjttab) AS "REAJUSTE"
+          FROM nuvem.v_clientes c
+          LEFT JOIN ecapp.f010vcc t ON c.codcli = t.codcli
+          LEFT JOIN ecapp.f011tve r ON t.codtvs = r.codtvs
+          WHERE c.sitcli = 'A'
+            AND c.codven = :id
+            AND (UPPER(c.razcli) LIKE UPPER(:search) OR UPPER(c.codcli) LIKE UPPER(:search))
+          GROUP BY c.codcli
+          ORDER BY c.codcli, MAX(c.razcli)
+          OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `;
 
       // Executa a query com paginação e filtro de busca
@@ -55,7 +62,7 @@ export default {
       });
 
       // Faz uma type assertion para garantir que result.rows é um array
-      const rows = result.rows as [string, string, string, string, string, string][] | undefined;
+      const rows = result.rows as [string, string, string, string, string, string, string, string][] | undefined;
 
       // Verifica se há resultados
       if (!rows || rows.length === 0) {
@@ -70,6 +77,8 @@ export default {
         CONTATO: row[3],
         ENDERECO: row[4],
         CIDADE: row[5],
+        TABELA: row[6],
+        REAJUSTE: row[7]
       }));
 
       console.log('Clientes encontrados:', clientes);

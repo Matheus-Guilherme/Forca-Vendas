@@ -31,7 +31,7 @@ export default {
       // Executa a query com paginação
       const result = await connection.execute(
         `SELECT codpro "CODIGO",
-                desfam "DESCRICAO",
+                despro "DESCRICAO",
                 undpro "UNIDADE",
                 desfam "FAMILIA",
                 estpro "ESTOQUE",
